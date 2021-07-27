@@ -15,8 +15,8 @@
                     return response.json();
                 }).then(function (data) {
                     var htmlTxt = '';
-                
-                        var product = data[0];
+                    for (let i=0; i<data.length;i++) {
+                        var product = data[i];
                         //generate html for retail products
                         htmlTxt += '\
                             <li class="col-md-3 col-sm-6 col-xs-12 product" style="padding-bottom: 1%; padding-top: 2%;">\
@@ -41,7 +41,7 @@
                                     </span>\
                                 </span>\
                             </li>';
-                
+                        }
                     document.getElementById("retailProductsDisplay").innerHTML = htmlTxt;
                     document.getElementById("categoryTitle").innerHTML = cat;
                 }).catch(function(error) {
