@@ -1,0 +1,339 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            var items = null;
+            document.addEventListener('DOMContentLoaded', function(){
+                var currentUrl = new URL(window.location.href);
+                var errMsg = currentUrl.searchParams.get("errMsg");
+                var goodMsg = currentUrl.searchParams.get("goodMsg");
+                if(errMsg != null && errMsg != "") {
+                    document.getElementById("panelTitle").innerHTML = errMsg;
+                }
+                else if(goodMsg != null && goodMsg != "") {
+                    document.getElementById("panelTitle").innerHTML = goodMsg;
+                }
+
+                fetch(new Request('/api/getAllItems',
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    items = data;
+                    var htmlTxt = '';
+                    if(data != null && data != "") {
+                        for(i = 0; i < data.length; i++) {
+                            var item = data[i];
+                            htmlTxt += '\
+                            <tr>\
+                                <td>\
+                                    <input type="checkbox" name="delete" value="(' + item.itemId + ',' + item.countryId + ')" />\
+                                </td>\
+                                <td>\
+                                    ' + item.countryName + '\
+                                </td>\
+                                <td>\
+                                    ' + item.sku + '\
+                                </td>\
+                                <td>\
+                                    ' + item.retailPrice + '\
+                                    <div hidden id="updateItemPricing' + item.itemId + '" style="float:right">\
+                                        <input type="number" step="any" min="0" max="99999" class="form-control" style="width:80px;" id="price' + item.itemId + '" required/>\
+                                        <input class="btn btn-primary" type="button" value="Submit" onclick="update(' + item.itemId + ',' + item.countryId + ')"/>\
+                                    </div>\
+                                </td>\
+                                <td><input class="btn btn-primary" onclick="showEditItemPricing(' + item.itemId + ')" type="button" value="Update"/></td>\
+                            </tr>';
+                        }
+                        document.getElementById("tableBody").innerHTML = htmlTxt;
+                        $('#dataTables-example').dataTable();
+
+                        fetch(new Request('/api/getAllCountries',
+                        {
+                            method: 'GET',
+                            headers: {
+                                Authorization: 'Bearer ' + authToken
+                            }
+                        })).then(function (response) {
+                            return response.json();
+                        }).then(function (data) {
+                            var countries = data;
+                            var htmlTxt = '';
+                            for(i = 0; i < countries.length; i++) {
+                                htmlTxt += '<option value="' + countries[i].id + '">' + countries[i].name + '</option>'
+                            }
+                            document.getElementById("countrySelect").innerHTML = htmlTxt;
+                        }).catch(function(error) {
+                            console.log(error);
+                        });
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function checkAll(source) {
+                checkboxes = document.getElementsByName('delete');
+                for (var i = 0, n = checkboxes.length; i < n; i++) {
+                    checkboxes[i].checked = source.checked;
+                }
+            }
+
+            function showAddDiv() {
+                $("html, body").animate({scrollTop: $(document).height()}, "slow");
+                $("#addItemPricingForm").show("slow", function() {});
+            }
+
+            function add() {
+                if (document.getElementById("addForm").checkValidity()) {
+                    var addData = {
+                        countryId: document.getElementById("countrySelect").value,
+                        sku: document.getElementById("addSku").value,
+                        price: document.getElementById("addPrice").value
+                    };
+
+                    fetch(new Request('/api/CheckItemSku?sku=' + addData.sku,
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization: 'Bearer ' + authToken
+                        }
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(!data.ok) {
+                            fetch(new Request('/api/addItemPrice',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: 'Bearer ' + authToken
+                                },
+                                body: JSON.stringify(addData)
+                            })).then(function (response) {
+                                return response.json();
+                            }).then(function (data) {
+                                var sel = document.getElementById("countrySelect");
+                                var url = window.location.origin + window.location.pathname;
+                                if(data) {
+                                    window.location.href = url + '?goodMsg=Price added successfully for item "' + addData.sku
+                                        + '" in ' + sel.options[sel.selectedIndex].text + '.';
+                                }
+                                else {
+                                    window.location.href = url + '?errMsg=Price already exist for item "' + addData.sku
+                                        + '" in ' + sel.options[sel.selectedIndex].text + '.';
+                                }
+                            }).catch(function (error) {
+                                console.log(error);
+                            });
+                        }
+                        else {
+                            var url = window.location.origin + window.location.pathname;
+                            window.location.href = url + '?errMsg=SKU "' + addData.sku + '" does not exist. Please try again';
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+            }
+
+            function showEditItemPricing(id) {
+                if(document.getElementById("updateItemPricing" + id).style.display == "block") {
+                    $("#updateItemPricing" + id).hide("fast", function() {});
+                }
+                else {
+                    $("#updateItemPricing" + id).show("fast", function() {});
+                }
+            }
+
+            function update(itemId,countryId) {
+                var price = parseFloat(document.getElementById("price" + itemId).value);
+                if(price.toString().indexOf(".") > 0) {
+                    if(price.toString().split(".")[1].length > 1){
+                        price = Number(Math.round(price+'e1')+'e-1');
+                    }
+                }
+                
+                var updateData = {
+                    itemId: itemId,
+                    countryId: countryId,
+                    price: price
+                };
+
+                fetch(new Request('/api/updateItemPrice',
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify(updateData)
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    if(data) {
+                        var url = window.location.origin + window.location.pathname;
+                        window.location.href = url + '?goodMsg=Successfully updated.';
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            }
+
+            function removeRecord() {
+                var checkboxes = document.getElementsByName('delete');
+                var selectedCheckboxes = [];
+                var numOfTicks = 0;
+                for (var i = 0, n = checkboxes.length; i < n; i++) {
+                    if (checkboxes[i].checked) {
+                        numOfTicks++;
+                        selectedCheckboxes.push(checkboxes[i].value);
+                    }
+                }
+                if (numOfTicks > 0) {
+                    fetch(new Request('/api/removeItemPricing',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(selectedCheckboxes)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data) {
+                            window.location.href = '/A6/countryItemPricingManagement.html?goodMsg=Successfully removed ' + numOfTicks + ' records.';
+                        }
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                }
+                else {
+                    window.location.href = '/A6/countryItemPricingManagement.html?errMsg=No item(s) selected for deletion.';
+                }
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">Item Pricing Management</h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-user"></i>  <a href="itemManagement.html">Item Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-dollar"></i>&nbsp;Item Pricing Management
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="panel panel-default">
+                                <div class="panel-heading" id="panelTitle">
+                                    Welcome to Item Pricing Management                                
+                                </div>
+                                <form name="itemPricingManagement" onsubmit="return false;">
+                                    <div class="panel-body">
+                                        <div class="table-responsive">
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <input class="btn btn-primary" type="button" value="Add Item Pricing" onclick="showAddDiv()"/>
+                                                    <a href="#myModal" data-toggle="modal"><button class="btn btn-primary">Remove Record</button></a>
+                                                </div>
+                                            </div>
+                                            <br/>
+                                            <div id="dataTables-example_wrapper" class="dataTables_wrapper form-inline" role="grid">
+                                                <table class="table table-striped table-bordered table-hover" id="dataTables-example">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width:5%"><input type="checkbox"onclick="checkAll(this)" /></th>
+                                                            <th style="width:20%">Country</th>
+                                                            <th style="width:15%">SKU</th>
+                                                            <th style="width:15%">Price</th>
+                                                            <th style="width:10%">Update</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tableBody"></tbody>
+                                                </table>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <input class="btn btn-primary" type="button" value="Add Item Pricing" onclick="showAddDiv()"/>
+                                                    <a href="#myModal" data-toggle="modal"><button class="btn btn-primary">Remove Record</button></a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                                <form id="addForm" onsubmit="return false;">
+                                    <div id="addItemPricingForm" hidden>
+                                        <div class="row">
+                                            <div class="form-group">
+                                                <div class="col-md-3" style="padding-left: 30px"><br>
+                                                    <table>
+                                                        <tr>
+                                                            <td>
+                                                                Country:&nbsp;
+                                                            </td>
+                                                            <td>
+                                                                <select class="form-control" id="countrySelect"></select>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                SKU:&nbsp;
+                                                            </td>
+                                                            <td>
+                                                                <input id="addSku" class="form-control" type="text" required/>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>
+                                                                Price:&nbsp;
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" min="0" max="99999" step="0.1" class="form-control" id="addPrice" required/>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                    <input class="btn btn-primary" type="submit" value="Add" onclick="add()" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div role="dialog" class="modal fade" id="myModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4>Alert</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p id="messageBox">Record will be removed. Are you sure?</p>
+                    </div>
+                    <div class="modal-footer">                        
+                        <input class="btn btn-primary" name="btnRemove" type="submit" value="Confirm" onclick="removeRecord()"  />
+                        <a class="btn btn-default" data-dismiss ="modal">Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

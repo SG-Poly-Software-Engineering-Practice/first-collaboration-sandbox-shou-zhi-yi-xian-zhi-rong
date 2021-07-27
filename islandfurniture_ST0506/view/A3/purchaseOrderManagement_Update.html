@@ -1,0 +1,625 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            var purchaseOrder = null;
+            var lineItem = null;
+            document.addEventListener('DOMContentLoaded', function(){
+                var currentUrl = new URL(window.location.href);
+                var poId = currentUrl.searchParams.get("id");
+                if(poId == null || poId == '') {
+                    window.location.href = '/A3/purchaseOrderManagement.html';
+                }
+
+                var today = new Date().toISOString().split('T')[0];
+                document.getElementById("expectedDate").setAttribute('min', today);
+                fetch(new Request('/api/getSuppliers',
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (result) {
+                    var htmlTxt = '';
+                    for(i = 0; i < result.length; i++) {
+                        htmlTxt += '<option value="' + result[i].id + '">' + result[i].supplierName + '</option>';
+                    }
+                    document.getElementById('select_supplier').innerHTML = htmlTxt;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+
+                fetch(new Request('/api/getWarehouses',
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (result) {
+                    var htmlTxt = '';
+                    for(i = 0; i < result.length; i++) {
+                        htmlTxt += '<option value="' + result[i].id + '">' + result[i].warehouseName + '</option>';
+                    }
+                    document.getElementById('select_warehouse').innerHTML = htmlTxt;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+
+                fetch(new Request('/api/getPurchaseOrderById/' + poId,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    purchaseOrder = data;
+                    document.getElementById("poId").innerHTML = purchaseOrder.id;
+                    var statusHtmlTxt = '<label>Status</label><select class="form-control" id="statusSelect" required="true">';
+                    if (purchaseOrder.status == 'Submitted') {
+                        statusHtmlTxt += '<option>Shipped</option>'
+                            + '<option>Unfulfillable</option>';
+                        document.getElementById('statusAnchorTag').href = '#submitConfirmation';
+                        document.getElementById('statusButton').innerHTML = 'Update Purchase Order';
+                    }
+                    else if (purchaseOrder.status == 'Shipped') {
+                        statusHtmlTxt += '<option>Completed</option>'
+                            + '<option>Unfulfillable</option>';
+                        document.getElementById('statusAnchorTag').href = '#submitConfirmation';
+                        document.getElementById('statusButton').innerHTML = 'Update Purchase Order';
+                    }
+                    else if (purchaseOrder.status == 'Unfulfillable') {
+                        statusHtmlTxt += '<option>Unfulfillable</option>';
+                        document.getElementById('statusAnchorTag').href = '#';
+                        document.getElementById('statusButton').disabled = true;
+                        document.getElementById('statusButton').innerHTML = 'Update Purchase Order';
+                    }
+                    else if (purchaseOrder.status == 'Completed') {
+                        statusHtmlTxt += '<option>Completed</option>';
+                        document.getElementById('statusAnchorTag').href = '#';
+                        document.getElementById('statusButton').disabled = true;
+                        document.getElementById('statusButton').innerHTML = 'Update Purchase Order';
+                    }
+                    statusHtmlTxt += '</select>';
+                    document.getElementById('statusSelectDiv').innerHTML = statusHtmlTxt;
+
+                    if (purchaseOrder.status == 'Pending') {
+                        document.getElementById('select_supplier').disabled = false;
+                        document.getElementById('select_warehouse').disabled = false;
+                        document.getElementById('expectedDate').disabled = false;
+                        document.getElementById('btnUpdate').disabled = false;
+                        document.getElementById('btnAddLineItem').disabled = false;
+                        document.getElementById('btnAddLineItem2').disabled = false;
+                        document.getElementById('ARemoveLineItem').disabled = false;
+                        document.getElementById('ARemoveLineItem').href = '#removeLineItem';
+                        document.getElementById('btnRemoveLineItem').disabled = false;
+                        document.getElementById('ARemoveLineItem2').disabled = false;
+                        document.getElementById('ARemoveLineItem2').href = '#removeLineItem';
+                        document.getElementById('btnRemoveLineItem2').disabled = false;
+                        document.getElementById('topCheckbox').disabled = false;
+                        document.getElementById('statusAnchorTag').href = '#submitConfirmation';
+                        document.getElementById('statusSelectDiv').innerHTML = '<input type="hidden" id="statusSelect">';
+                        document.getElementById('statusButton').innerHTML = 'Submit Purchase Order';
+                    }
+                    document.getElementById("select_supplier").value = purchaseOrder.supplierId;
+                    document.getElementById("select_warehouse").value = purchaseOrder.destinationId;
+                    var expectedReceiveDate = new Date(purchaseOrder.expectedReceiveDate);
+                    var erdDay = expectedReceiveDate.getDate().toString().length == 2 ? expectedReceiveDate.getDate():'0' + expectedReceiveDate.getDate();
+                    var erdMonth = (expectedReceiveDate.getMonth()+1).toString().length == 2 ? expectedReceiveDate.getMonth()+1:'0' + (expectedReceiveDate.getMonth()+1);
+                    document.getElementById('expectedDate').value = expectedReceiveDate.getFullYear() + '-' + erdMonth + '-' + erdDay;
+
+                    document.getElementById("poStatus").innerHTML = purchaseOrder.status;
+                    document.getElementById("submittedBy").innerHTML = purchaseOrder.submittedBy;
+
+                    fetch(new Request('/api/getPurchaseOrderLineItem/' + purchaseOrder.id,
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization: 'Bearer ' + authToken
+                        }
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        lineItem = data;
+                        fetch(new Request('/api/getSupplierItemById/' + purchaseOrder.supplierId,
+                        {
+                            method: 'GET',
+                            headers: {
+                                Authorization: 'Bearer ' + authToken
+                            }
+                        })).then(function (response) {
+                            return response.json();
+                        }).then(function (supplierItem) {
+                            var price = 0;
+                            var htmlTxt = '';
+                            for(i = 0; i < lineItem.length; i++) {
+                                for(y = 0; y < supplierItem.length; y++) {
+                                    if (lineItem[i].ID == supplierItem[y].itemId) {
+                                        var qty = lineItem[i].QUANTITY;
+                                        var priceOfOneItem = supplierItem[y].costprice;
+                                        var priceOfLineItem = qty / supplierItem[y].lotSize * priceOfOneItem;
+                                        price += priceOfLineItem;
+
+                                        var disabled = purchaseOrder.status == 'Pending' ? '':'disabled';
+                                        htmlTxt += '\
+                                            <tr>\
+                                                <td>\
+                                                    <input ' + disabled + ' type="checkbox" name="delete" value="' + lineItem[i].LINEITEM_ID + '" />\
+                                                </td>\
+                                                <td>\
+                                                    ' + lineItem[i].SKU + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + lineItem[i].NAME + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + lineItem[i].TYPE + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + supplierItem[y].costprice + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + supplierItem[y].lotSize + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + lineItem[i].QUANTITY / supplierItem[y].lotSize + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + lineItem[i].QUANTITY + '\
+                                                </td>\
+                                                <td>\
+                                                    ' + supplierItem[y].leadTime + '\
+                                                </td>\
+                                                <td>\
+                                                    <input ' + disabled + ' type="button" name="btnEdit" class="btn btn-primary btn-block" value="Update" onclick="javascript:updatePOLineItem(' + lineItem[i].LINEITEM_ID + ')"/>\
+                                                </td>\
+                                            </tr>';
+                                    }
+                                }
+                            }
+                            document.getElementById('totalPrice').innerHTML = price;
+                            document.getElementById('tableBody').innerHTML = htmlTxt;
+                            $('#dataTables-example').dataTable();
+                        }).catch(function (error) {
+                            console.log(error);
+                        });
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function addPOLineItem() {
+                purchaseOrder.supplierId = parseInt(document.getElementById("select_supplier").value);
+                sessionStorage.setItem('POAddLineItem',JSON.stringify(purchaseOrder));
+                window.location.href = "/A3/purchaseOrderManagement_AddLineItem.html";
+            }
+
+            function updatePOLineItem(lineItemId) {
+                sessionStorage.setItem('POUpdateLineItem',JSON.stringify(purchaseOrder));
+                window.location.href = '/A3/purchaseOrderManagement_UpdateLineItem.html?id=' + lineItemId;
+            }
+            function submitPOLineItem() {
+                var status = document.getElementById('statusSelect').value;
+                if(purchaseOrder.status == 'Pending') {
+                    if(lineItem.length == 0) {
+                        window.location.href = '/A3/purchaseOrderManagement_Update.html?id=' + purchaseOrder.id + '&errMsg=Empty purchase order cannot be submitted.';
+                    }
+                    else {
+                        var updateData = {
+                            id: purchaseOrder.id,
+                            status: 'Submitted'
+                        };
+
+                        fetch(new Request('/api/updatePurchaseOrderStatus',
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: 'Bearer ' + authToken
+                            },
+                            body: JSON.stringify(updateData)
+                        })).then(function (response) {
+                            return response.json();
+                        }).then(function (data) {
+                            if(data) {
+                                window.location.href = '/A3/purchaseOrderManagement_Update.html?goodMsg=Purchase Order submitted successfully.&id=' + purchaseOrder.id;
+                            }
+                        }).catch(function (error) {
+                            console.log(error);
+                        });
+                    }
+                }
+                else if(status == 'Completed') {
+                    fetch(new Request('/api/getInboundStorageBin/' + purchaseOrder.destinationId,
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization: 'Bearer ' + authToken
+                        }
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(async function (sb) {
+                        if(!sb.success) {
+                            window.location.href = '/A3/purchaseOrderManagement_Update.html?'
+                                +'errMsg=Destination warehouse does not have an inbound storage bin.'
+                                +'<br/>Please create one first before marking this order as completed.'
+                                +'&id=' + purchaseOrder.id;
+                        }
+                        else {
+                            var allOk = true;
+                            for(i = 0; i < lineItem.length; i++) {
+                                await fetch(new Request('/api/checkItemExistInStorageBin?storageBinId=' + sb.storageBin.id + '&itemId=' + lineItem[i].ID,
+                                {
+                                    method: 'GET',
+                                    headers: {
+                                        Authorization: 'Bearer ' + authToken
+                                    }
+                                })).then(function (response) {
+                                    return response.json();
+                                }).then(function (data) {
+                                    if(data) {
+                                        var addData = {
+                                            lineItemId: lineItem[i].LINEITEM_ID,
+                                            quantity: lineItem[i].QUANTITY
+                                        };
+
+                                        fetch(new Request('/api/addQuantityToLineItem',
+                                        {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: 'Bearer ' + authToken
+                                            },
+                                            body: JSON.stringify(addData)
+                                        })).then(function (response) {
+                                            return response.json();
+                                        }).then(function (data) {
+                                            if(!data) {
+                                                allOk = false;
+                                            }
+                                        }).catch(function (error) {
+                                            console.log(error);
+                                        });
+                                    }
+                                    else{
+                                        var addData = {
+                                            quantity: lineItem[i].QUANTITY,
+                                            itemId: lineItem[i].ID
+                                        };
+
+                                        fetch(new Request('/api/addLineItem',
+                                        {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: 'Bearer ' + authToken
+                                            },
+                                            body: JSON.stringify(addData)
+                                        })).then(function (response) {
+                                            return response.json();
+                                        }).then(function (result) {
+                                            if(result.success) {
+                                                var addData2 = {
+                                                    lineItemId: result.generatedId,
+                                                    storageBinId: sb.storageBin.id
+                                                };
+                                                fetch(new Request('/api/addStorageBinLineItem',
+                                                {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        Authorization: 'Bearer ' + authToken
+                                                    },
+                                                    body: JSON.stringify(addData2)
+                                                })).then(function (response) {
+                                                    return response.json();
+                                                }).then(function (data) {
+                                                    if(!data) {
+                                                        allOk = false;
+                                                    }
+                                                }).catch(function (error) {
+                                                    console.log(error);
+                                                });
+                                            }
+                                        }).catch(function (error) {
+                                            console.log(error);
+                                        });
+                                    }
+                                }).catch(function (error) {
+                                    console.log(error);
+                                });
+                            }
+                            if(allOk) {
+                                var updateData = {
+                                    id: purchaseOrder.id,
+                                    status: 'Completed'
+                                };
+                                fetch(new Request('/api/updatePurchaseOrderStatus',
+                                {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        Authorization: 'Bearer ' + authToken
+                                    },
+                                    body: JSON.stringify(updateData)
+                                })).then(function (response) {
+                                    return response.json();
+                                }).then(function (data) {
+                                    if(data) {
+                                        window.location.href = '/A3/purchaseOrderManagement_Update.html?goodMsg=Purchase Order updated successfully.&id=' + purchaseOrder.id;
+                                    }
+                                }).catch(function (error) {
+                                    console.log(error);
+                                });
+                            }
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+                else {
+                    var updateData = {
+                        id: purchaseOrder.id,
+                        status: status
+                    };
+
+                    fetch(new Request('/api/updatePurchaseOrderStatus',
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(updateData)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data) {
+                            window.location.href = '/A3/purchaseOrderManagement_Update.html?goodMsg=Purchase Order updated successfully.&id=' + purchaseOrder.id;
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+            }
+            function removePOLineItem() {
+                var checkboxes = document.getElementsByName('delete');
+                var selectedCheckboxes = [];
+                var numOfTicks = 0;
+                for (var i = 0, n = checkboxes.length; i < n; i++) {
+                    if (checkboxes[i].checked) {
+                        numOfTicks++;
+                        selectedCheckboxes.push(checkboxes[i].value);
+                    }
+                }
+                if (numOfTicks > 0) {
+                    fetch(new Request('/api/removePOLineItem',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(selectedCheckboxes)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data) {
+                            window.location.href = '/A3/purchaseOrderManagement_Update.html?goodMsg=Successfully removed ' + numOfTicks + ' records.&id=' + purchaseOrder.id
+                        }
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                }
+                else {
+                    window.location.href = '/A3/purchaseOrderManagement_Update.html?errMsg=No item(s) selected for deletion.&id=' + purchaseOrder.id
+                }
+            }
+            function checkAll(source) {
+                checkboxes = document.getElementsByName('delete');
+                for (var i = 0, n = checkboxes.length; i < n; i++) {
+                    checkboxes[i].checked = source.checked;
+                }
+            }
+
+            function update() {
+                var updateData = {
+                    id: purchaseOrder.id,
+                    supplier: document.getElementById("select_supplier").value,
+                    warehouse: document.getElementById("select_warehouse").value,
+                    expectedDate: document.getElementById('expectedDate').value
+                };
+                fetch(new Request('/api/updatePurchaseOrder',
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify(updateData)
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    if(data) {
+                        window.location.href = '/A3/purchaseOrderManagement_Update.html?goodMsg=Purchase Order updated successfully.&id=' + purchaseOrder.id;
+                    }
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                Purchase Order
+                            </h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-exchange"></i> <a href="purchaseOrderManagement.html">Purchase Order Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-edit"></i> Purchase Order - Update
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    <script src="/displayMessageLong.js"></script>
+
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Purchase Order ID: <span id="poId"></span></h3>
+                                </div>
+                                <div class="panel-body">
+                                    <form role="form" id="updateForm" onsubmit="return false;">
+                                        <div class="form-group">
+                                            <label>Supplier</label>
+                                            <select class="form-control" id="select_supplier" name="supplier" required="true" disabled></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Destination</label>
+                                            <select class="form-control" id="select_warehouse" name="destination" required="true" disabled></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Expected Receiving Date:</label>
+                                            <input class="form-control" id="expectedDate" type="date" required="true" disabled/>
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="submit" value="Update Purchase Order" class="btn btn-lg btn-primary btn-block" onclick="update()" id="btnUpdate" disabled>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Purchase Order Status: <span class="label label-success" id="poStatus"></span></h3>
+                                </div>
+                                <div class="panel-body">
+                                    <form role="form" id="poStatusForm" onsubmit="return false;">
+                                        <div class="form-group" id="statusSelectDiv"></div>
+                                        <div class="form-group">
+                                            <a id="statusAnchorTag" data-toggle="modal">
+                                                <button id="statusButton" class="btn btn-lg btn-primary btn-block"></button>
+                                            </a>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Submitted By: <span id="submittedBy" style="font-weight: bold;"></span></h3>
+                                </div>
+                            </div>
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Total Price: <span style="font-weight: bold;" id="totalPrice"></span></h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title">Line item Management</h3>
+                                </div>
+                                <form id="poManagementForm" onsubmit="return false;">
+                                    <div class="panel-body">
+                                        <div class="table-responsive">
+                                            <div id="dataTables-example_wrapper" class="dataTables_wrapper form-inline" role="grid">
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <input type="button" id="btnAddLineItem" class="btn btn-primary" value="Add Line Item" onclick="javascript:addPOLineItem()" disabled/>
+                                                        <a href="#" id="ARemoveLineItem" data-toggle="modal">
+                                                            <button id="btnRemoveLineItem" class="btn btn-primary" disabled>Remove Line Item</button>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <br>
+                                                <table class="table table-striped table-bordered table-hover" id="dataTables-example">
+                                                    <thead>
+                                                        <tr>
+                                                            <th><input id="topCheckbox" type="checkbox" onclick="checkAll(this)" disabled/></th>
+                                                            <th>SKU</th>
+                                                            <th>Item Name</th>
+                                                            <th>Item Type</th>
+                                                            <th>Price (Per Lot Size)</th>
+                                                            <th>Lot Size</th>
+                                                            <th>Quantity (In Lot Size)</th>
+                                                            <th>Total Quantity</th>
+                                                            <th>Lead Time</th>
+                                                            <th>Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tableBody"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <input type="button" id="btnAddLineItem2" class="btn btn-primary" value="Add Line Item" onclick="javascript:addPOLineItem()" disabled/>
+                                                <a href="#" id="ARemoveLineItem2" data-toggle="modal" disabled><button id="btnRemoveLineItem2" class="btn btn-primary" disabled>Remove Line Item</button></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div role="dialog" class="modal fade" id="removeLineItem">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4>Alert</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p id="messageBox">Line Item will be removed. Are you sure?</p>
+                    </div>
+                    <div class="modal-footer">                        
+                        <input class="btn btn-primary" name="btnRemove" type="submit" value="Confirm" onclick="removePOLineItem()"  />
+                        <a class="btn btn-default" data-dismiss ="modal">Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div role="dialog" class="modal fade" id="submitConfirmation">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4>Confirmation</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p id="messageBox">Are you sure?</p>
+                    </div>
+                    <div class="modal-footer">                        
+                        <input class="btn btn-primary" name="btnSubmit" type="submit" value="Confirm" onclick="submitPOLineItem()"  />
+                        <a class="btn btn-default" data-dismiss ="modal">Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,111 @@
+<script src="../checkCountry.js" ></script>
+<html>
+    <script src="../../header.js"></script>
+    <body>
+        <div class="body">
+            <script>
+                document.addEventListener('DOMContentLoaded', function(){
+                    var htmlTxt = '';
+                    var stores = JSON.parse(localStorage.getItem('storesInCountry'));
+                    for(i in stores) {
+                        var store = stores[i];
+                        htmlTxt += '\
+                            <div class="panel panel-default toggle" style="margin-bottom:10;">\
+                                <div class="panel-heading">\
+                                    <h4 class="panel-title">\
+                                        <a data-toggle="collapse" data-parent="#collapsable" href="#collapse' + i + '" onclick="changeIcon(this)">\
+                                            <i class="icon icon-plus plusMinusIcon" style="font-size: 0.7em;"></i>\
+                                                '+ store.name + '\
+                                            <i class="icon icon-caret-right" style="float:right;padding-top:5px;"></i>\
+                                        </a>\
+                                    </h4>\
+                                </div>\
+                                <div id="collapse' + i + '" class="panel-collapse collapse">\
+                                    <div class="col-md-6" style="padding-top: 2%; padding-bottom: 2%; padding-left: 2%;">';
+                        if(store.name == 'Queenstown Store') {
+                            htmlTxt += '<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.8097536372684!2d103.8054196044487!3d1.288316392821856!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da1bccbff9647b%3A0x5351c0e5de41eacd!2s317+Alexandra+Rd%2C+Singapore+159965!5e0!3m2!1sen!2ssg!4v1512125741176"'
+                                + 'width="100%" height="280" frameborder="0" style="border:0" allowfullscreen></iframe>';
+                        }
+                        else if(store.name == 'Kent Ridge Store') {
+                            htmlTxt += '<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.795789220162!2d103.77203201462221!3d1.2972049990538737!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da1af87a78a80d%3A0xdff4edb48c15ce73!2s20+Kent+Ridge+Rd!5e0!3m2!1sen!2ssg!4v1512125809848"'
+                                + 'width="100%" height="280" frameborder="0" style="border:0" allowfullscreen></iframe>';
+                        }
+                        else if(store.name == 'Tampines Store') {
+                            htmlTxt += '<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.670837545041!2d103.93055931462227!3d1.3741829989977647!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da3d9738fb5f1b%3A0x400db9a71afb7f60!2s60+Tampines+North+Drive+2%2C+Singapore+528764!5e0!3m2!1sen!2ssg!4v1512125875750"'
+                                + 'width="100%" height="280" frameborder="0" style="border:0" allowfullscreen></iframe>';
+                        }
+                        else if(store.name == 'ECommerce Store') {
+                            htmlTxt += '<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d255278.15107204844!2d103.68395752012522!3d1.3437419350471123!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da1767b42b8ec9%3A0x400f7acaedaa420!2sSingapore!5e0!3m2!1sen!2ssg!4v1512126107314"'
+                                + 'width="100%" height="280" frameborder="0" style="border:0" allowfullscreen></iframe>';
+                        }
+                        htmlTxt += '\
+                                    </div>\
+                                    <div class="col-md-6" style="padding-top: 2%; padding-bottom: 2%;">\
+                                        <p>\
+                                            Address: ' + store.address + '<br/>\
+                                            Telephone: ' + store.telephone + '<br/>\
+                                            Email: ' + store.email + '<br/>\
+                                        </p>\
+                                    </div>\
+                                </div>\
+                            </div>';
+                    }
+                    document.getElementById('collapsable').innerHTML = htmlTxt;
+                }, false);
+
+                function changeIcon(e) {
+                    var currentIcon = e.querySelector('i');
+                    var opened = true;
+                    if(currentIcon.classList.contains('icon-plus')) {
+                        opened = false;
+                    }
+
+                    var otherIcons = document.getElementById("collapsable").querySelectorAll('.plusMinusIcon');
+                    for (i = 0; i < otherIcons.length; i++){
+                        var icon = otherIcons[i];
+                        if(icon.classList.contains('icon-minus')) {
+                            icon.classList.replace('icon-minus','icon-plus');
+                        }
+                    }
+
+                    
+                    if(!opened) {
+                        currentIcon.classList.replace('icon-plus', 'icon-minus');
+                    }
+                    else {
+                        currentIcon.classList.replace('icon-minus', 'icon-plus');
+                    }
+                }
+            </script>
+            <script src="menu2.js"></script>
+            <div role="main" class="main">
+                <section class="page-top">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h2>Store Locations</h2>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="panel-group" id="collapsable"></div>
+                        </div>
+                    </div>
+                </div>
+                <script src="../footer.js"></script>
+
+                <!-- Theme Initializer -->
+                <script src="../../js/theme.plugins.js"></script>
+                <script src="../../js/theme.js"></script>
+
+                <!-- Current Page JS -->
+                <script src="../../vendor/rs-plugin/js/jquery.themepunch.tools.min.js"></script>
+                <script src="../../vendor/rs-plugin/js/jquery.themepunch.revolution.js"></script>
+                <script src="../../vendor/circle-flip-slideshow/js/jquery.flipshow.js"></script>
+                <script src="../../js/views/view.home.js"></script>
+            </div>
+    </body>
+</html>

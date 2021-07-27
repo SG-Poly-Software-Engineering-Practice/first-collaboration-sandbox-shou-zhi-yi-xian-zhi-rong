@@ -1,0 +1,132 @@
+<script src="../checkCountry.js" ></script>
+<html>
+    <script src="../../header.js"></script>
+    <body>
+        <script>
+            var countryPrefix = localStorage.getItem('urlPrefix');
+            //get sku from query parameter
+            var currentUrl = new URL(window.location.href);
+            var sku = currentUrl.searchParams.get("sku");
+            var memberEmail = sessionStorage.getItem('memberEmail');
+            if(sku == null || sku == '') {
+                window.location.href = '/B/' + countryPrefix + '/index.html';
+            }
+            var countryId = localStorage.getItem('countryId');
+            fetch(new Request('/api/getRetailProductBySku?sku=' + sku + '&countryId=' + countryId,
+                {
+                    method: 'GET'
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (product) {
+                    //set retail product details
+                    document.getElementById("productImg").setAttribute('src', product.imageURL);
+
+                    document.getElementById("productCategory").innerHTML = product.category;
+                    document.getElementById("productCategory").setAttribute('href', '/B/' + countryPrefix
+                        + '/retailProductsCategory.html?cat=' + encodeURIComponent(product.category));
+
+                    var selectOptions = '<option></option>';
+                    var storeID = currentUrl.searchParams.get("storeID");
+                    var storesInCountry = JSON.parse(localStorage.getItem('storesInCountry'));
+                    for (i = 0; i < storesInCountry.length; i++) {
+                        var store = storesInCountry[i];
+                        if(store.id == storeID) {
+                            selectOptions += '<option selected value="' + store.id + '">' + store.name + '</option>';
+                        }
+                        else {
+                            selectOptions += '<option value="' + store.id + '">' + store.name + '</option>';
+                        }
+                    }
+                    document.getElementById("storeID").innerHTML = selectOptions;
+
+                    var quantityDivTxt = 'Status: ';
+                    var itemQty = currentUrl.searchParams.get("itemQty");
+                    if(itemQty != null) {
+                        quantityDivTxt += itemQty > 0 ? 'Available':'Unavailable';
+                        quantityDivTxt += '<br/>Remaining Qty: ' + itemQty;
+                        document.getElementById("quantityDiv").innerHTML = '\
+                            <div class="col-md-6">\
+                                ' + quantityDivTxt + '\
+                            </div>';
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+
+            function CheckItemAvail() {
+                var storeId = document.getElementById("storeID").value;
+                if(storeId != null && storeId != '') {
+                    fetch(new Request('/api/getItemQuantity?sku=' + sku + '&storeId=' + storeId,
+                    {
+                        method: 'GET'
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        var quantity = data[0].sum;
+                        if(quantity == null || quantity == '') {
+                            quantity = 0;
+                        }
+                        //refresh page with item's quantity in the query parameter to display to the user
+                        var url = window.location.origin + window.location.pathname;
+                        window.location.href = url + '?sku=' + sku + '&itemQty=' + quantity + '&storeID=' + storeId;
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                }
+            }
+        </script>
+        <div class="body">
+            <script src="menu2.js"></script>
+            <div class="body">
+                <div role="main" class="main">
+                    <section class="page-top">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h2>Retail Products</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="container">
+                        <hr class="tall">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div>
+                                    <div class="thumbnail">
+                                        <img alt="" class="img-responsive img-rounded" id="productImg">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="summary entry-summary">
+                                    <h2 class="shorter"><strong id="productName"></strong></h2>
+                                    <p class="price"><h4 class="amount" id="productPrice"></h4></p>
+                                    <strong>Description</strong>
+                                    <p class="taller" id="productDesc"></p>
+                                    <div class="product_meta">
+                                        <span class="posted_in">Category: <a rel="tag" id="productCategory"></a></span>
+                                    </div>
+                                    <br/><br/>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <form onsubmit="return false;">
+                                                View Item Availability<br/>
+                                                <select style="color: black;" name="storeID" id="storeID"></select><br/><br/>
+                                                <input type="submit" onclick="CheckItemAvail()" class="btn btn-primary btn-icon" value="Check Item Availability"/>
+                                            </form>
+                                        </div>
+                                        <div id="quantityDiv"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr class="tall">
+                        </div>
+                    </div>
+                </div>
+                <script src="../footer.js"></script>
+            </div>
+    </body>
+</html>

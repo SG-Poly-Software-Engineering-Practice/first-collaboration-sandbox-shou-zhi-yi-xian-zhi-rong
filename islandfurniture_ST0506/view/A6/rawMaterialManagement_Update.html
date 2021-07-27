@@ -1,0 +1,107 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            var material = null;
+            document.addEventListener('DOMContentLoaded', function(){
+                material = JSON.parse(sessionStorage.getItem("rawMaterialUpdate"));
+                document.getElementById("name").value = material.name;
+                document.getElementById("category").value = material.category;
+                document.getElementById("description").value = material.description;
+                document.getElementById("SKU").value = material.sku;
+                document.getElementById("length").value = material.length;
+                document.getElementById("width").value = material.width;
+                document.getElementById("height").value = material.height;
+            }, false);
+
+            function update() {
+                var updateData = {
+                    id: material.id,
+                    name: document.getElementById("name").value,
+                    category: document.getElementById("category").value,
+                    description: document.getElementById("description").value
+                };
+
+                fetch(new Request('/api/updateRawMaterial',
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify(updateData)
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    if(data) {
+                        window.location.href = "/A6/rawMaterialManagement.html?goodMsg=Raw material updated successfully.";
+                    }
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                Raw Material Details Update
+                            </h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-user"></i>  <a href="itemManagement.html">Item Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-align-center"></i><a href="rawMaterialManagement.html"> Raw Material Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-edit"></i>  Raw Material Details Update
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <form role="form" id="updateForm" onsubmit="return false;">
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input class="form-control" required="true" id="name" type="text">
+                                </div>
+                                <div class="form-group">
+                                    <label>Category</label>
+                                    <input class="form-control"  type="text" id="category">
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input class="form-control" type="text"  id="description" required="true">
+                                </div>
+                                <div class="form-group">
+                                    <label>SKU</label>
+                                    <input class="form-control" type="text"  id="SKU" required="true" disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label>Length per item</label>
+                                    <input class="form-control" type="text"  id="length" required="true" disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label>Width per item</label>
+                                    <input class="form-control" type="text"  id="width" required="true" disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label>Height per item</label>
+                                    <input class="form-control" type="text"  id="height" required="true" disabled>
+                                </div>
+                                <div class="form-group">
+                                    <input type="submit" value="Update" class="btn btn-lg btn-primary btn-block" onclick="update()">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

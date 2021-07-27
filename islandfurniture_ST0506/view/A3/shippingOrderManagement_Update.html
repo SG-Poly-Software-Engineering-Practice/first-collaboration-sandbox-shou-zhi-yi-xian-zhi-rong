@@ -1,0 +1,581 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            var shippingOrder = null;
+            var lineItem = null;
+            document.addEventListener('DOMContentLoaded', function(){
+                var currentUrl = new URL(window.location.href);
+                var soId = currentUrl.searchParams.get("id");
+                if(soId == null || soId == '') {
+                    window.location.href = '/A3/shippingOrderManagement.html';
+                }
+
+                var today = new Date().toISOString().split('T')[0];
+                document.getElementById("expectedDate").setAttribute('min', today);
+
+                fetch(new Request('/api/getWarehouses',
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (result) {
+                    var htmlTxt = '';
+                    for(i = 0; i < result.length; i++) {
+                        htmlTxt += '<option value="' + result[i].id + '">' + result[i].warehouseName + '</option>';
+                    }
+                    document.getElementById('select_destination').innerHTML = htmlTxt;
+                    document.getElementById('select_source').innerHTML = htmlTxt;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+
+                fetch(new Request('/api/getShippingOrderById/' + soId,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    shippingOrder = data;
+                    document.getElementById("soId").innerHTML = shippingOrder.id;
+                    var statusHtmlTxt = '<label>Status</label><select class="form-control" id="statusSelect" required="true">';
+                    if (shippingOrder.status == 'Submitted') {
+                        statusHtmlTxt += '<option>Shipped</option>'
+                            + '<option>Unfulfillable</option>';
+                        document.getElementById('statusAnchorTag').href = '#submitConfirmation';
+                        document.getElementById('statusButton').innerHTML = 'Update Shipping Order';
+                    }
+                    else if (shippingOrder.status == 'Shipped') {
+                        statusHtmlTxt += '<option>Completed</option>'
+                            + '<option>Unfulfillable</option>';
+                        document.getElementById('statusAnchorTag').href = '#submitConfirmation';
+                        document.getElementById('statusButton').innerHTML = 'Update Shipping Order';
+                    }
+                    else if (shippingOrder.status == 'Unfulfillable') {
+                        statusHtmlTxt += '<option>Unfulfillable</option>';
+                        document.getElementById('statusAnchorTag').href = '#';
+                        document.getElementById('statusButton').disabled = true;
+                        document.getElementById('statusButton').innerHTML = 'Update Shipping Order';
+                    }
+                    else if (shippingOrder.status == 'Completed') {
+                        statusHtmlTxt += '<option>Completed</option>';
+                        document.getElementById('statusAnchorTag').href = '#';
+                        document.getElementById('statusButton').disabled = true;
+                        document.getElementById('statusButton').innerHTML = 'Update Shipping Order';
+                    }
+                    statusHtmlTxt += '</select>';
+                    document.getElementById('statusSelectDiv').innerHTML = statusHtmlTxt;
+
+                    if (shippingOrder.status == 'Pending') {
+                        document.getElementById('select_destination').disabled = false;
+                        document.getElementById('select_source').disabled = false;
+                        document.getElementById('expectedDate').disabled = false;
+                        document.getElementById('btnUpdate').disabled = false;
+                        document.getElementById('btnAddLineItem').disabled = false;
+                        document.getElementById('btnAddLineItem2').disabled = false;
+                        document.getElementById('ARemoveLineItem').disabled = false;
+                        document.getElementById('ARemoveLineItem').href = '#removeLineItem';
+                        document.getElementById('btnRemoveLineItem').disabled = false;
+                        document.getElementById('ARemoveLineItem2').disabled = false;
+                        document.getElementById('ARemoveLineItem2').href = '#removeLineItem';
+                        document.getElementById('btnRemoveLineItem2').disabled = false;
+                        document.getElementById('topCheckbox').disabled = false;
+                        document.getElementById('statusAnchorTag').href = '#submitConfirmation';
+                        document.getElementById('statusSelectDiv').innerHTML = '<input type="hidden" id="statusSelect">';
+                        document.getElementById('statusButton').innerHTML = 'Submit Shipping Order';
+                    }
+                    document.getElementById("select_destination").value = shippingOrder.destinationId;
+                    document.getElementById("select_source").value = shippingOrder.originId;
+                    var expectedReceiveDate = new Date(shippingOrder.expectedReceiveDate);
+                    var erdDay = expectedReceiveDate.getDate().toString().length == 2 ? expectedReceiveDate.getDate():'0' + expectedReceiveDate.getDate();
+                    var erdMonth = (expectedReceiveDate.getMonth()+1).toString().length == 2 ? expectedReceiveDate.getMonth()+1:'0' + (expectedReceiveDate.getMonth()+1);
+                    document.getElementById('expectedDate').value = expectedReceiveDate.getFullYear() + '-' + erdMonth + '-' + erdDay;
+
+                    document.getElementById("soStatus").innerHTML = shippingOrder.status;
+                    document.getElementById("submittedBy").innerHTML = shippingOrder.submittedBy;
+
+                    fetch(new Request('/api/getShippingOrderLineItem/' + shippingOrder.id,
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization: 'Bearer ' + authToken
+                        }
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        lineItem = data;
+                        var htmlTxt = '';
+                        for(i = 0; i < lineItem.length; i++) {
+                            var disabled = shippingOrder.status == 'Pending' ? '':'disabled';
+                            htmlTxt += '\
+                            <tr>\
+                                <td>\
+                                    <input '+ disabled +' type="checkbox" name="delete" value="'+ lineItem[i].LINEITEM_ID +'" />\
+                                </td>\
+                                <td>\
+                                    '+ lineItem[i].SKU +'\
+                                </td>\
+                                <td>\
+                                    '+ lineItem[i].NAME +'\
+                                </td>\
+                                <td>\
+                                    '+ lineItem[i].QUANTITY +'\
+                                </td>\
+                                <td>\
+                                    <input '+ disabled +' type="button" name="btnEdit" class="btn btn-primary btn-block" value="Update" onclick="javascript:updateSOLineItem('+ lineItem[i].LINEITEM_ID +')"/>\
+                                </td>\
+                            </tr>';
+                        }
+                        document.getElementById('tableBody').innerHTML = htmlTxt;
+                        $('#dataTables-example').dataTable();
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function addSOLineItem() {
+                sessionStorage.setItem('SOAddLineItem',JSON.stringify(shippingOrder));
+                window.location.href = "/A3/shippingOrderManagement_AddLineItem.html";
+            }
+            function updateSOLineItem(lineItemId) {
+                sessionStorage.setItem('SOUpdateLineItem',JSON.stringify(shippingOrder));
+                window.location.href = '/A3/shippingOrderManagement_UpdateLineItem.html?id=' + lineItemId;
+            }
+            function submitSOLineItem() {
+                var status = document.getElementById('statusSelect').value;
+                if(shippingOrder.status == 'Pending') {
+                    if(lineItem.length == 0) {
+                        window.location.href = '/A3/shippingOrderManagement_Update.html?id=' + shippingOrder.id + '&errMsg=Empty shipping order cannot be submitted.';
+                    }
+                    else {
+                        var updateData = {
+                            id: shippingOrder.id,
+                            status: 'Submitted'
+                        };
+                        updateStatus(updateData);
+                    }
+                }
+                else if (status == 'Shipped') {
+                    var now = new Date();
+                    var month = (now.getMonth()+1).toString().length == 2 ? now.getMonth()+1:'0' + (now.getMonth()+1);
+                    var formattedDate = now.getFullYear() + '-' + month + '-' + now.getDate();
+                    var updateData = {
+                        id: shippingOrder.id,
+                        date: formattedDate
+                    };
+                    fetch(new Request('/api/updateShippingOrderShippedDate',
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(updateData)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data) {
+                            var updateData2 = {
+                                id: shippingOrder.id,
+                                status: 'Shipped'
+                            };
+                            updateStatus(updateData2);
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+                else if(status == 'Completed') {
+                    fetch(new Request('/api/getInboundStorageBin/' + shippingOrder.destinationId,
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization: 'Bearer ' + authToken
+                        }
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(async function (sb) {
+                        if(!sb.success) {
+                            window.location.href = '/A3/shippingOrderManagement_Update.html?'
+                                +'errMsg=Destination warehouse does not have an inbound storage bin.'
+                                +'<br/>Please create one first before marking this order as completed.'
+                                +'&id=' + shippingOrder.id;
+                        }
+                        else {
+                            var allOk = true;
+                            for(i = 0; i < lineItem.length; i++) {
+                                await fetch(new Request('/api/checkItemExistInStorageBin?storageBinId=' + sb.storageBin.id + '&itemId=' + lineItem[i].ID,
+                                {
+                                    method: 'GET',
+                                    headers: {
+                                        Authorization: 'Bearer ' + authToken
+                                    }
+                                })).then(function (response) {
+                                    return response.json();
+                                }).then(function (data) {
+                                    if(data) {
+                                        var addData = {
+                                            lineItemId: lineItem[i].LINEITEM_ID,
+                                            quantity: lineItem[i].QUANTITY
+                                        };
+
+                                        fetch(new Request('/api/addQuantityToLineItem',
+                                        {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: 'Bearer ' + authToken
+                                            },
+                                            body: JSON.stringify(addData)
+                                        })).then(function (response) {
+                                            return response.json();
+                                        }).then(function (data) {
+                                            if(!data) {
+                                                allOk = false;
+                                            }
+                                        }).catch(function (error) {
+                                            console.log(error);
+                                        });
+                                    }
+                                    else{
+                                        var addData = {
+                                            quantity: lineItem[i].QUANTITY,
+                                            itemId: lineItem[i].ID
+                                        };
+
+                                        fetch(new Request('/api/addLineItem',
+                                        {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: 'Bearer ' + authToken
+                                            },
+                                            body: JSON.stringify(addData)
+                                        })).then(function (response) {
+                                            return response.json();
+                                        }).then(function (result) {
+                                            if(result.success) {
+                                                var addData2 = {
+                                                    lineItemId: result.generatedId,
+                                                    storageBinId: sb.storageBin.id
+                                                };
+                                                fetch(new Request('/api/addStorageBinLineItem',
+                                                {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        Authorization: 'Bearer ' + authToken
+                                                    },
+                                                    body: JSON.stringify(addData2)
+                                                })).then(function (response) {
+                                                    return response.json();
+                                                }).then(function (data) {
+                                                    if(!data) {
+                                                        allOk = false;
+                                                    }
+                                                }).catch(function (error) {
+                                                    console.log(error);
+                                                });
+                                            }
+                                        }).catch(function (error) {
+                                            console.log(error);
+                                        });
+                                    }
+                                }).catch(function (error) {
+                                    console.log(error);
+                                });
+                            }
+                            if(allOk) {
+                                var updateData = {
+                                    id: shippingOrder.id,
+                                    status: 'Completed'
+                                };
+                                updateStatus(updateData);
+                            }
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+                else {
+                    var updateData = {
+                        id: shippingOrder.id,
+                        status: status
+                    };
+                    updateStatus(updateData);
+                }
+            }
+
+            function updateStatus(updateData) {
+                fetch(new Request('/api/updateShippingOrderStatus',
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify(updateData)
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    if(data) {
+                        window.location.href = '/A3/shippingOrderManagement_Update.html?goodMsg=Shipping Order submitted successfully.&id=' + shippingOrder.id;
+                    }
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }
+
+            function removeSOLineItem() {
+                var checkboxes = document.getElementsByName('delete');
+                var selectedCheckboxes = [];
+                var numOfTicks = 0;
+                for (var i = 0, n = checkboxes.length; i < n; i++) {
+                    if (checkboxes[i].checked) {
+                        numOfTicks++;
+                        selectedCheckboxes.push(checkboxes[i].value);
+                    }
+                }
+                if (numOfTicks > 0) {
+                    fetch(new Request('/api/removeSOLineItem',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(selectedCheckboxes)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data) {
+                            window.location.href = '/A3/shippingOrderManagement_Update.html?goodMsg=Successfully removed ' + numOfTicks + ' records.&id=' + shippingOrder.id
+                        }
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                }
+                else {
+                    window.location.href = '/A3/shippingOrderManagement_Update.html?errMsg=No item(s) selected for deletion.&id=' + shippingOrder.id
+                }
+            }
+
+            function checkAll(source) {
+                checkboxes = document.getElementsByName('delete');
+                for (var i = 0, n = checkboxes.length; i < n; i++) {
+                    checkboxes[i].checked = source.checked;
+                }
+            }
+
+            function update() {
+                var destination = document.getElementById("select_destination").value;
+                var source = document.getElementById("select_source").value;
+                if(destination == source) {
+                    window.location.href = '/A3/shippingOrderManagement_Update.html?errMsg=Source warehouse should not be the same as destination warehouse.&id=' + shippingOrder.id;
+                }
+                else {
+                    var updateData = {
+                        id: shippingOrder.id,
+                        destination: destination,
+                        source: source,
+                        expectedDate: document.getElementById('expectedDate').value
+                    };
+                    fetch(new Request('/api/updateShippingOrder',
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(updateData)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data) {
+                            window.location.href = '/A3/shippingOrderManagement_Update.html?goodMsg=Shipping Order updated successfully.&id=' + shippingOrder.id;
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                Shipping Order
+                            </h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-exchange"></i> <a href="shippingOrderManagement.html">Shipping Order Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-edit"></i> Shipping Order - Update
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    <script src="/displayMessageLong.js"></script>
+
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Shipping Order ID: <span id="soId"></span></h3>
+                                </div>
+                                <div class="panel-body">
+                                    <form role="form" id="updateForm" onsubmit="return false;">
+                                        <div class="form-group">
+                                            <label>Origin</label>
+                                            <select class="form-control" id="select_source" name="origin" required="true" disabled></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Destination</label>
+                                            <select class="form-control" name="destination" id="select_destination" required="true" disabled></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Expected Receiving Date:</label>
+                                            <input class="form-control" id="expectedDate" type="date" required="true" disabled/>
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="submit" value="Update Shipping Order" onclick="update()" id="btnUpdate" class="btn btn-lg btn-primary btn-block" disabled />
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Shipping Order Status: <span class="label label-success" id="soStatus"></span></h3>
+                                </div>
+                                <div class="panel-body">
+                                    <form role="form"id="soStatusForm" onsubmit="return false;">
+                                        <div class="form-group" id="statusSelectDiv"></div>
+                                        <div class="form-group">
+                                            <a id="statusAnchorTag" data-toggle="modal">
+                                                <button id="statusButton" class="btn btn-lg btn-primary btn-block"></button>
+                                            </a>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Submitted By: <span id="submittedBy" style="font-weight: bold;"></span></h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title">Line item Management</h3>
+                                </div>
+                                <form id="soManagementForm" onsubmit="return false;">
+                                    <div class="panel-body">
+                                        <div class="table-responsive">
+                                            <div id="dataTables-example_wrapper" class="dataTables_wrapper form-inline" role="grid">
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <input type="button" id="btnAddLineItem" class="btn btn-primary" value="Add Line Item" onclick="javascript:addSOLineItem()" disabled/>
+                                                        <a href="#" id="ARemoveLineItem" data-toggle="modal">
+                                                            <button class="btn btn-primary" id="btnRemoveLineItem" disabled>Remove Line Item</button>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <br>
+                                                <table class="table table-striped table-bordered table-hover" id="dataTables-example">
+                                                    <thead>
+                                                        <tr>
+                                                            <th><input id="topCheckbox" type="checkbox"onclick="checkAll(this)" disabled/></th>
+                                                            <th>SKU</th>
+                                                            <th>Item Name</th>
+                                                            <th>Quantity</th>
+                                                            <th>Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tableBody"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <input type="button" id="btnAddLineItem2" class="btn btn-primary" value="Add Line Item" onclick="javascript:addSOLineItem()" disabled/>
+                                                <a href="#" id="ARemoveLineItem2" data-toggle="modal">
+                                                    <button class="btn btn-primary" id="btnRemoveLineItem2" disabled>Remove Line Item</button>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div role="dialog" class="modal fade" id="removeLineItem">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4>Alert</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p id="messageBox">Line Item will be removed. Are you sure?</p>
+                    </div>
+                    <div class="modal-footer">                        
+                        <input class="btn btn-primary" name="btnRemove" type="submit" value="Confirm" onclick="removeSOLineItem()"  />
+                        <a class="btn btn-default" data-dismiss ="modal">Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div role="dialog" class="modal fade" id="submitConfirmation">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4>Confirmation</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p id="messageBox">Are you sure?</p>
+                    </div>
+                    <div class="modal-footer">                        
+                        <input class="btn btn-primary" name="btnSubmit" type="submit" value="Confirm" onclick="submitSOLineItem()"  />
+                        <a class="btn btn-default" data-dismiss ="modal">Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            $("#myForm").submit(function (e) {
+                var source = $("#select_source").find(":selected").text();
+                var destination = $("#select_destination").find(":selected").text();
+                if (source === destination) {
+                    alert("Source warehouse should not be the same as destination warehouse.");
+                    e.preventDefault();
+                }
+                else
+                    return true;
+            });
+        </script>
+    </body>
+</html>

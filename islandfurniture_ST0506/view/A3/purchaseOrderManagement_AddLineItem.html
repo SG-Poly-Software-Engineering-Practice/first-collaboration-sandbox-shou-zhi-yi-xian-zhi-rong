@@ -1,0 +1,181 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            var purchaseOrder = JSON.parse(sessionStorage.getItem('POAddLineItem'));
+            if(purchaseOrder == null || purchaseOrder == '') {
+                window.location.href = '/A3/purchaseOrderManagement.html';
+            }
+            
+            document.addEventListener('DOMContentLoaded', function(){
+                document.getElementById('topNavPoId').href = '/A3/purchaseOrderManagement_Update.html?id=' + purchaseOrder.id;
+                document.getElementById('topNavPoId').innerHTML = 'Purchase Order ID: ' + purchaseOrder.id;
+                document.getElementById('panelTitle').innerHTML = 'Purchase Order ID: ' + purchaseOrder.id + ' - Add Line Item';
+                fetch(new Request('/api/getSupplierItemList/' + purchaseOrder.supplierId,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (result) {
+                    var selectTxt = '';
+                    var htmlTxt = '';
+                    for(i = 0; i < result.length; i++) {
+                        selectTxt += '<option value="' + result[i].ITEM_ID + '">' + result[i].SKU + '</option>';
+                        htmlTxt += '<tr>\
+                            <td>\
+                                '+ result[i].SKU +'\
+                            </td>\
+                            <td>\
+                                '+ result[i].NAME +'\
+                            </td>\
+                            <td>\
+                                '+ result[i].TYPE +'\
+                            </td>\
+                            <td>\
+                                '+ result[i].COSTPRICE +'\
+                            </td>\
+                            <td>\
+                                '+ result[i].LOTSIZE +'\
+                            </td>\
+                            <td>\
+                                '+ result[i].LEADTIME +'\
+                            </td>\
+                        </tr>';
+                    }
+                    document.getElementById('sku').innerHTML = selectTxt;
+                    document.getElementById('tableBody').innerHTML = htmlTxt;
+                    $('#dataTables-example').dataTable();
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function add() {
+                if (document.getElementById("addForm").checkValidity()) {
+                    var addData = {
+                        itemId: document.getElementById("sku").value,
+                        quantity: document.getElementById("quantity").value
+                    };
+                    fetch(new Request('/api/addLineItem',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(addData)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data.success) {
+                            var addData2 = {
+                                purchaseOrderId: purchaseOrder.id,
+                                lineItemId: data.generatedId
+                            };
+                            fetch(new Request('/api/addPurchaseOrderLineItem',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: 'Bearer ' + authToken
+                                },
+                                body: JSON.stringify(addData2)
+                            })).then(function (response) {
+                                return response.json();
+                            }).then(function (data) {
+                                if(data) {
+                                    window.location.href = '/A3/purchaseOrderManagement_Update.html?goodMsg=Line item added successfully.&id=' + purchaseOrder.id;
+                                }
+                            }).catch(function (error) {
+                                console.log(error);
+                            });
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                Add Line Item
+                            </h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-exchange"></i> <a href="purchaseOrderManagement.html">Purchase Order Management</a>
+                                </li>
+                                <li>
+                                    <i class="icon icon-exchange"></i> <a id="topNavPoId"></a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-edit"></i> Add Line Item
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    <script src="/displayMessage.js"></script>
+
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title" id="panelTitle"></h3>
+                                </div>
+                                <div class="panel-body">
+                                    <form role="form" id="addForm" onsubmit="return false;">
+                                        <div class="form-group">
+                                            <label>SKU</label>
+                                            <select required="true" id="sku" class="form-control"></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Quantity (In Lot Size)</label>
+                                            <input class="form-control" id="quantity" type="number" min="1" max="9999" required="true" >
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="submit" value="Add Line Item" class="btn btn-lg btn-primary btn-block" onclick="add()">
+                                        </div>  
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title">Items supplied by supplier</h3>
+                                </div>
+                                <div class="panel-body">
+                                    <div class="table-responsive">
+                                        <div id="dataTables-example_wrapper" class="dataTables_wrapper form-inline" role="grid">
+                                            <br>
+                                            <table class="table table-striped table-bordered table-hover" id="dataTables-example">
+                                                <thead>
+                                                    <tr>
+                                                        <th>SKU</th>
+                                                        <th>Item Name</th>
+                                                        <th>Item Type</th>
+                                                        <th>Price (Per <p style="color: black;">Lot Size)</p></th>
+                                                        <th>Lot Size</th>
+                                                        <th>Lead Time</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tableBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

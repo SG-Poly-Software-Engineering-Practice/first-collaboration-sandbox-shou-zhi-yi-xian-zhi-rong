@@ -1,0 +1,208 @@
+<script src="../checkCountry.js" ></script>
+<html>
+    <script src="../../header.js"></script>
+    <body>
+        <script>
+            var countryPrefix = localStorage.getItem('urlPrefix');
+            //get sku from query parameter
+            var currentUrl = new URL(window.location.href);
+            var sku = currentUrl.searchParams.get("sku");
+            var memberEmail = sessionStorage.getItem('memberEmail');
+            if(sku == null || sku == '') {
+                window.location.href = '/B/' + countryPrefix + '/index.html';
+            }
+            var countryId = localStorage.getItem('countryId');
+            fetch(new Request('/api/getFurnitureBySku?sku=' + sku + '&countryId=' + countryId,
+                {
+                    method: 'GET'
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (furniture) {
+                    //set furniture details
+                    document.getElementById("imgFurniture").setAttribute('src', furniture.imageURL);
+                
+                    if(memberEmail != null && memberEmail != '') {
+                        document.getElementById("addToCartBtn").innerHTML = '<button class="btn btn-primary" onclick="addToCart(\''
+                        + furniture.sku + '\',\'' + furniture.id + '\',' + furniture.price + ',\'' + furniture.name + '\',\''
+                        + furniture.imageURL + '\')">Add To Cart</button>';
+                    }
+               
+                    document.getElementById("categoryLink").innerHTML = furniture.category;
+                    document.getElementById("categoryLink").setAttribute('href', '/B/' + countryPrefix
+                        + '/furnitureCategory.html?cat=' + encodeURIComponent(furniture.category));
+
+                    var selectOptions = '<option></option>';
+                    var storeID = currentUrl.searchParams.get("storeID");
+                    var storesInCountry = JSON.parse(localStorage.getItem('storesInCountry'));
+                    for (i = 0; i < storesInCountry.length; i++) {
+                        var store = storesInCountry[i];
+                        if(store.id == storeID) {
+                            selectOptions += '<option selected value="' + store.id + '">' + store.name + '</option>';
+                        }
+                        else {
+                            selectOptions += '<option value="' + store.id + '">' + store.name + '</option>';
+                        }
+                    }
+                    document.getElementById("storeID").innerHTML = selectOptions;
+
+                    var quantityDivTxt = 'Status: ';
+                    var itemQty = currentUrl.searchParams.get("itemQty");
+                    if(itemQty != null) {
+                        quantityDivTxt += itemQty > 0 ? 'Available':'Unavailable';
+                        quantityDivTxt += '<br/>Remaining Qty: ' + itemQty;
+                        document.getElementById("quantityDiv").innerHTML = '\
+                            <div class="col-md-6">\
+                                ' + quantityDivTxt + '\
+                            </div>';
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+
+            function addToCart(sku,id,price,name,imageURL) {
+                fetch(new Request('/api/getItemQuantity?sku=' + sku + '&storeId=-1',
+                {
+                    method: 'GET'
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    var quantity = data[0].sum;
+                    //if there is not enough quantity for a product to be added to the cart
+                    if(quantity == null || quantity == '') {
+                        var url = window.location.origin + window.location.pathname;
+                        window.location.href = url + '?sku=' + sku + '&errMsg=Item not added to cart, not enough quantity available.';
+                    }
+                    else {
+                        var allOk = true;
+                        var shoppingCart = JSON.parse(sessionStorage.getItem('shoppingCart'));
+                        //if shopping cart is empty
+                        if(shoppingCart == null || shoppingCart == '') {
+                            shoppingCart = [];
+                            shoppingCart.push({
+                                id: id,
+                                sku: sku,
+                                price: price,
+                                name: name,
+                                imgURL: imageURL,
+                                quantity: 1
+                            });
+                        }
+                        else {
+                            var exist = false;
+                            for(i = 0; i < shoppingCart.length; i++) {
+                                var cartItem = shoppingCart[i];
+                                //if item already exists in the cart, add 1 to the quantity
+                                if(cartItem.sku == sku) {
+                                    if (shoppingCart[i].quantity == quantity) {
+                                        var url = window.location.origin + window.location.pathname;
+                                        window.location.href = url + '?sku=' + sku + '&errMsg=Item not added to cart, not enough quantity available.';
+                                        exist = true;
+                                        allOk = false;
+                                    }
+                                    else {
+                                        shoppingCart[i].quantity += 1;
+                                        exist = true;
+                                    }
+                                }
+                            }
+                            //if item is new in the cart
+                            if (!exist) {
+                                shoppingCart.push({
+                                    id: id,
+                                    sku: sku,
+                                    price: price,
+                                    name: name,
+                                    imgURL: imageURL,
+                                    quantity: 1
+                                });
+                            }
+                        }
+                        if (allOk) {
+                            sessionStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+                            var url = window.location.origin + window.location.pathname;
+                            window.location.href = url + '?sku=' + sku + '&goodMsg=Successfully added!';
+                        }
+                    }
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            }
+
+            function CheckItemAvail() {
+                var storeId = document.getElementById("storeID").value;
+                if(storeId != null && storeId != '') {
+                    fetch(new Request('/api/getItemQuantity?sku=' + sku + '&storeId=' + storeId,
+                    {
+                        method: 'GET'
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        var quantity = data[0].sum;
+                        if(quantity == null || quantity == '') {
+                            quantity = 0;
+                        }
+                        //refresh page with item's quantity in the query parameter to display to the user
+                        var url = window.location.origin + window.location.pathname;
+                        window.location.href = url + '?sku=' + sku + '&itemQty=' + quantity + '&storeID=' + storeId;
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                }
+            }
+        </script>
+        <div class="body">
+            <script src="menu2.js"></script>
+            <div class="body">
+                <div role="main" class="main">
+                    <section class="page-top">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h2>Furnitures</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="container">
+                        <script src="/displayMessageLong.js"></script>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div>
+                                    <div class="thumbnail">
+                                        <img alt="" class="img-responsive img-rounded" id="imgFurniture">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="summary entry-summary">
+                                    <h2 class="shorter"><strong id="furnitureName"></strong></h2>
+                                    <div id="addToCartBtn"></div>
+                                    <p class="price"><h4 class="amount" id="price"></h4></p>
+                                    <strong>Description</strong>
+                                    <p class="taller" id="description"></p>
+                                    <p id="furnitureInfo"></p>
+                                    <div class="product_meta">
+                                        <span class="posted_in">Category: <a id="categoryLink" rel="tag"></a></span>
+                                    </div>
+                                    <br/><br/>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <form onsubmit="return false;">
+                                                View Item Availability<br/>
+                                                <select style="color: black;" name="storeID" id="storeID"></select><br/><br/>
+                                                <input type="submit" onclick="CheckItemAvail()" class="btn btn-primary btn-icon" value="Check Item Availability"/>
+                                            </form>
+                                        </div>
+                                        <div id="quantityDiv"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr class="tall">
+                        </div>
+                    </div>
+                </div>
+                <script src="../footer.js"></script>
+            </div>
+    </body>
+</html>

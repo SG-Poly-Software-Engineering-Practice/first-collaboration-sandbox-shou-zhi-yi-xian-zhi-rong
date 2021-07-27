@@ -1,0 +1,180 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            document.addEventListener('DOMContentLoaded', function(){
+                var staff = JSON.parse(sessionStorage.getItem("staff"));
+                document.getElementById("identificationNo").value = staff.identificationNo;
+                document.getElementById("staffName").value = staff.name;
+                document.getElementById("staffEmail").value = staff.email;
+                document.getElementById("securityQuestion").value = staff.securityQuestion;
+                document.getElementById("securityAnswer").value = staff.securityAnswer;
+                document.getElementById("staffPhone").value = staff.phone;
+                document.getElementById("staffAddress").value = staff.address;
+
+                fetch(new Request('/api/getStaffRoles/' + staff.id,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (result) {
+                    document.getElementById("roleName").innerHTML = result.role.name;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function submitForm() {
+                var password = document.getElementById("password").value;
+                var repassword = document.getElementById("repassword").value;
+                var ok = true;
+                if (document.getElementById("profileForm").checkValidity()) {
+                    if ((password != null && repassword != null) || (password != "" && repassword != "")) {
+                        if (password != repassword) {
+                            //Check if password and repassword is the same
+                            document.getElementById("password").style.borderColor = "#E34234";
+                            document.getElementById("repassword").style.borderColor = "#E34234";
+                            alert("Passwords do not match. Please key again.");
+                            ok = false;
+                        } else if (password == repassword) {
+                            //Check if password length is at least 8
+                            if (password.length != 0 && password.length < 8) {
+                                alert("Passwords too short. At least 8 characters.");
+                                ok = false;
+                            }
+                        }
+                    }
+
+                    if(ok) {
+                        var data = {
+                            idNo: document.getElementById("identificationNo").value,
+                            name: document.getElementById("staffName").value,
+                            email: document.getElementById("staffEmail").value,
+                            securityQuestion: document.getElementById("securityQuestion").value,
+                            securityAnswer: document.getElementById("securityAnswer").value,
+                            phone: document.getElementById("staffPhone").value,
+                            address: document.getElementById("staffAddress").value,
+                            password: document.getElementById("password").value
+                        };
+                        
+                        fetch(new Request('/api/updateStaff',
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: 'Bearer ' + authToken
+                            },
+                            body: JSON.stringify(data)
+                        })).then(function (response) {
+                            return response.json();
+                        }).then(function (data) {
+                            //update staff's info in the session storage
+                            sessionStorage.setItem("staff", JSON.stringify(data));
+                            sessionStorage.setItem("staffEmail", data.email);
+                            sessionStorage.setItem("staffName", data.name);
+                            var url = window.location.origin + window.location.pathname;
+                            window.location.href = url + '?goodMsg=Successfully Updated!';
+                        }).catch(function (error) {
+                            console.log(error);
+                            var url = window.location.origin + window.location.pathname;
+                            window.location.href = url + '?errMsg=Unable to Update.';
+                        });
+                    }
+                }
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                User Profile
+                            </h1>
+                        </div>
+                    </div>
+                    <script src="/displayMessage.js"></script>
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="tabs">
+                                <ul class="nav nav-tabs">
+                                    <li class="active">
+                                        <a href="#overview" data-toggle="tab"><i class="icon icon-user"></i> Overview</a>
+                                    </li>
+                                    <li>
+                                        <a href="#roles" data-toggle="tab">Roles</a>
+                                    </li>
+                                </ul>
+                                <div class="tab-content">
+                                    <div id="overview" class="tab-pane active">
+                                        <form role="form" id="profileForm" onsubmit="return false;">
+                                            <h4>Personal Information</h4>
+                                            <div class="form-group">
+                                                <label>Identification No</label>
+                                                <input class="form-control" required="true" id="identificationNo" name="identificationNo" type="text">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Name</label>
+                                                <input class="form-control" required="true" id="staffName" name="name" type="text">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>E-mail Address</label>
+                                                <input class="form-control" required="true" id="staffEmail" disabled/>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Set Challenge Question</label>
+                                                <select id="securityQuestion">
+                                                    <option value="1">What is your mother's maiden name?</option>
+                                                    <option value="2">What is your first pet's name?</option>
+                                                    <option value="3">What is your favourite animal?</option>
+                                                </select>
+                                                <input class="form-control" type="text" required="true" id="securityAnswer">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Phone</label>
+                                                <input class="form-control" required="true" type="text" id="staffPhone" name="phone">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Address</label>
+                                                <input class="form-control" type="text" required="true" id="staffAddress" name="address">
+                                            </div>
+                                            <hr class="more-spaced "/>
+                                            <h4>Change Password</h4>
+                                            <div class="form-group">
+                                                <label>New Password (leave blank unless setting a new password).</label>
+                                                <input class="form-control" type="password" name="password" id="password">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Re-enter New Password</label>
+                                                <input class="form-control" type="password"  name="repassword" id="repassword">
+                                            </div>
+
+                                            <div class="panel-footer" style="padding-bottom: 0px;">
+                                                <div class="row">
+                                                    <div class="form-group">
+                                                        <input type="submit" value="Submit" class="btn btn-primary" onclick="submitForm()"/>
+                                                        <input type="reset" value="Reset" class="btn btn-primary"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div id="roles" class="tab-pane">
+                                        <h4>Position held in Island Furniture</h4>
+                                        <ul>
+                                            <li id="roleName"></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,115 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            function add() {
+                if (document.getElementById("addForm").checkValidity()) {
+                    var sku = document.getElementById("SKU").value;
+                    var imgFile = document.getElementById("imgfile").files;
+                    var url = window.location.origin + window.location.pathname;
+                    var ok = true;
+                    if(imgFile.length == 0) {
+                        ok = false;
+                        window.location.href = url + '?errMsg=Please select an image.';
+                    }
+                    if(imgFile[0].type.indexOf('image') == -1) {
+                        ok = false;
+                        window.location.href = url + '?errMsg=Image is not in a correct format.';
+                    }
+                    
+                    if(ok) {
+                        fetch(new Request('/api/CheckItemSku?sku=' + sku,
+                        {
+                            method: 'GET',
+                            headers: {
+                                Authorization: 'Bearer ' + authToken
+                            }
+                        })).then(function (response) {
+                            return response.json();
+                        }).then(function (data) {
+                            if(data.ok) {
+                                document.getElementById("addForm").submit();
+                            }
+                            else {
+                                var url = window.location.origin + window.location.pathname;
+                                window.location.href = url + '?errMsg=Failed to add retail product, SKU "' + data.sku + '" already exist.';
+                            }
+                        }).catch(function (error) {
+                            console.log(error);
+                        });
+                    }
+                }
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                Add Retail Product
+                            </h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-user"></i>  <a href="itemManagement.html">Item Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-coffee"></i><a href="retailProductManagement.html"> Retail Product Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-edit"></i> Add Retail Product
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <script src="/displayMessage.js"></script>
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <form role="form" id="addForm" method="POST" action="/api/addRetailProduct" onsubmit="return false;" encType="multipart/form-data">
+                                <fieldset>
+                                    <div class="form-group">
+                                        <label>Name</label>
+                                        <input class="form-control" name="name"  type="text" required="true">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Category</label>
+                                        <input class="form-control" required="true" type="text" name="category" >
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <input class="form-control" required="true" type="text" name="description">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>SKU</label>
+                                        <input class="form-control" type="text" required="true" name="sku" id="SKU">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Length per item</label>
+                                        <input class="form-control" type="number" required="true" min="1" step="1" name="length" >
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Width per item</label>
+                                        <input class="form-control" type="number" required="true" min="1" step="1" name="width" >
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Height per item</label>
+                                        <input class="form-control" type="number" required="true" min="1" step="1" name="height" >
+                                    </div>
+                                    <div>
+                                        <input type="file" name="imgfile" id="imgfile" accept="image/*">
+                                    </div>
+                                    <br/>
+                                    <div class="form-group">
+                                        <input type="submit" value="Add" class="btn btn-lg btn-primary btn-block" onclick="add()">
+                                    </div>
+                                </fieldset>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

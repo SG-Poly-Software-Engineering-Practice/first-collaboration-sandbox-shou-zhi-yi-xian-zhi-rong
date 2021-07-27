@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+    <script src="../header1.js"></script>
+    <body class="dark">
+        <script>
+            function login() {
+                var email = document.getElementById("email").value;
+                var password = document.getElementById("password").value;
+                if(document.getElementById("loginForm").checkValidity()){
+                    var data = {
+                        email: email,
+                        password: password
+                    };
+
+                    //Check if staff's email and password is valid
+                    fetch(new Request('/api/loginStaff',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        //if email or password is incorrect
+                        if(!data.success) {
+                            var url = window.location.origin + window.location.pathname;
+                            window.location.href = url + '?errMsg=Login fail. Please try again.';
+                        }
+                        else {
+                            fetch(new Request('/api/staffLockState?email=' + email,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    Authorization: 'Bearer ' + data.token
+                                }
+                            })).then(function (response) {
+                                return response.json();
+                            }).then(function (staff) {
+                                //if account is not locked
+                                if (staff.accountLockStatus == 0) {
+                                    sessionStorage.setItem("token", data.token);
+                                    //Get Staff
+                                    fetch(new Request('/api/getStaff?email=' + email,
+                                    {
+                                        method: 'GET',
+                                        headers: {
+                                            Authorization: 'Bearer ' + data.token
+                                        }
+                                    })).then(function (response) {
+                                        return response.json();
+                                    }).then(function (staff) {
+                                        //store staff's detail in session
+                                        sessionStorage.setItem('staffEmail', email);
+                                        sessionStorage.setItem('staffName', staff.name);
+                                        sessionStorage.setItem('staff', JSON.stringify(staff));
+
+                                        //redirect to workspace.html
+                                        window.location.href = "/A1/workspace.html";
+                                    }).catch(function(error) {
+                                        console.log(error);
+                                    });
+                                }
+                                //if account is locked
+                                else {
+                                    var url = window.location.origin + window.location.pathname;
+                                    window.location.href = url + '?errMsg=Login fail. Account is locked. Please reset your password';
+                                }
+                            }).catch(function(error) {
+                                console.log(error);
+                            });
+                        }
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                }
+            }    
+        </script>
+        <div role="main" class="main">
+            <div class="row">
+                <div class="header-container">
+                    <div class="row" style="background-color : rgb(153, 0, 0);">
+                        <div class="col-md-4 col-md-offset-4">  
+                            <img class="center-block img-responsive"  src="../img/logo-label.png" style="margin-top: 20px; margin-bottom: 20px;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-md-offset-4">  
+                    <div class="featured-box featured-boxes.login" style="height: auto;margin-top: 80px;">
+                        <div class="panel-heading"> 
+                            <i class="icon-4x icon icon-unlock-alt"  style="margin-top: 10px;"></i><h6 class="panel-title">Sign In</h6>
+                        </div>
+
+                        <div class="panel-body">
+                            <script src="../displayMessageLong.js"></script>
+                            <form role="form" id="loginForm" onsubmit="return false;">
+                                <div class="row">
+                                    <div class="form-group">
+                                        <div class="col-md-12">
+                                            <label>E-mail Address</label>
+                                            <input type="email" id="email" class="form-control input-lg" required="true">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="form-group">
+                                        <div class="col-md-12">
+                                            <label>Password</label>
+                                            <input type="password" id="password" class="form-control input-lg" required="true">
+                                            <a class="pull-right" href="staffForgetPassword.jsp">(Lost Password?)</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <input type="submit" value="Login" class="btn btn-lg btn-primary btn-block" onclick="login()">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

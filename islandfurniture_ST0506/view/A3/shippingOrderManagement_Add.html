@@ -1,0 +1,116 @@
+<html lang="en">
+    <script src="../header2.js"></script>
+    <body>
+        <script>
+            document.addEventListener('DOMContentLoaded', function(){
+                var today = new Date().toISOString().split('T')[0];
+                document.getElementById("expectedDate").setAttribute('min', today);
+
+                fetch(new Request('/api/getWarehouses',
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + authToken
+                    }
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (result) {
+                    var htmlTxt = '';
+                    for(i = 0; i < result.length; i++) {
+                        htmlTxt += '<option value="' + result[i].id + '">' + result[i].warehouseName + '</option>';
+                    }
+                    document.getElementById('select_destination').innerHTML = htmlTxt;
+                    document.getElementById('select_source').innerHTML = htmlTxt;
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }, false);
+
+            function add() {
+                var destination = document.getElementById("select_destination").value;
+                var source = document.getElementById("select_source").value;
+                if(destination == source) {
+                    window.location.href = '/A3/shippingOrderManagement_Add.html?errMsg=Source warehouse should not be the same as destination warehouse.';
+                }
+                else if (document.getElementById("addForm").checkValidity()) {
+                    var staff = JSON.parse(sessionStorage.getItem('staff'));
+                    var addData = {
+                        submittedBy: staff.name,
+                        destination: destination,
+                        source: source,
+                        expectedReceiveDate: document.getElementById("expectedDate").value
+                    };
+                    fetch(new Request('/api/addShippingOrder',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify(addData)
+                    })).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        if(data.success) {
+                            window.location.href = '/A3/shippingOrderManagement_Update.html?id=' + data.id;
+                        }
+                    }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+            }
+        </script>
+        <div id="wrapper">
+            <script src="../menu1.js"></script>
+            <div id="page-wrapper">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <h1 class="page-header">
+                                Create Shipping Order
+                            </h1>
+                            <ol class="breadcrumb">
+                                <li>
+                                    <i class="icon icon-exchange"></i> <a href="shippingOrderManagement.html">Shipping Order Management</a>
+                                </li>
+                                <li class="active">
+                                    <i class="icon icon-edit"></i> Add Shipping Order
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    <script src="/displayMessage.js"></script>
+
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title"> Shipping Order</h3>
+                                </div>
+                                <div class="panel-body">
+                                    <form role="form" id="addForm" onsubmit="return false;">
+                                        <div class="form-group">
+                                            <label>Source</label>
+                                            <select class="form-control" id="select_source" name="source" required="true"></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Destination</label>
+                                            <select class="form-control" id="select_destination" name="destination" required="true"></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Expected Receiving Date:</label>
+                                            <input class="form-control" id="expectedDate" type="date" required="true"/>
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="submit" value="Create Shipping Order" class="btn btn-lg btn-primary btn-block" onclick="add()">
+                                        </div>  
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

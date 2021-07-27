@@ -1,0 +1,80 @@
+<script src="../checkCountry.js" ></script>
+<html>
+    <script src="../../header.js"></script>
+    <body>
+        <script>
+            var countryPrefix = localStorage.getItem('urlPrefix');
+            //get category from query parameter
+            var currentUrl = new URL(window.location.href);
+            var cat = currentUrl.searchParams.get("cat");
+            var countryId = localStorage.getItem('countryId');
+            fetch(new Request('/api/getRetailProductByCat?cat=' + encodeURIComponent(cat) + '&countryId=' + countryId,
+                {
+                    method: 'GET'
+                })).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    var htmlTxt = '';
+                
+                        var product = data[0];
+                        //generate html for retail products
+                        htmlTxt += '\
+                            <li class="col-md-3 col-sm-6 col-xs-12 product" style="padding-bottom: 1%; padding-top: 2%;">\
+                                <span class="product-thumb-info">\
+                                    <span class="product-thumb-info-image">\
+                                        <span class="product-thumb-info-act">\
+                                            <span class="product-thumb-info-act-left">\
+                                                <a href="/B/' + countryPrefix + '/retailProductDetails.html?sku=' + product.sku + '" style="color: white"><em>View Details</em></a>\
+                                            </span>\
+                                        </span>\
+                                        <img alt="" class="img-responsive" src="' + product.imageURL + '">\
+                                    </span>\
+                                    <span class="product-thumb-info-content">\
+                                        <h4>' + product.name + '</h4>\
+                                        <span class="product-thumb-info-act-left">\
+                                            <em>Price: $' + product.price + '.00</em>\
+                                        </span><br/>\
+                                        <form action="retailProductDetails.html">\
+                                            <input type="hidden" name="sku" value="' + product.sku + '"/>\
+                                            <input type="submit" class="btn btn-primary btn-block" value="More Details"/>\
+                                        </form>\
+                                    </span>\
+                                </span>\
+                            </li>';
+                
+                    document.getElementById("retailProductsDisplay").innerHTML = htmlTxt;
+                    document.getElementById("categoryTitle").innerHTML = cat;
+                }).catch(function(error) {
+                    console.log(error);
+                });
+        </script>
+        <div class="body">
+            <script src="menu2.js"></script>
+            <div class="body">
+                <div role="main" class="main">
+                    <section class="page-top">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h2>Retail Products</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h2 class="shorter"><strong id="categoryTitle"></strong></h2>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <ul id="retailProductsDisplay" class="products product-thumb-info-list" style="list-style-type: none; margin-left: -3%;" data-plugin-masonry></ul>
+                        </div>
+                        <hr class="tall">
+                    </div>
+                </div>
+            </div>
+            <script src="../footer.js"></script>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,123 @@
+<html>
+<script src="../header.js"></script>
+<body>
+    <div class="body">
+            <header id="header">
+                    <div class="container">
+                        <h1 class="logo">
+                            <img alt="Island Furniture" width="180" height="80" data-sticky-width="82" data-sticky-height="40" src="../img/logo.png">
+                        </h1>
+                </header>
+        <div role="main" class="main">
+            <section class="parallax" data-stellar-background-ratio="0.5" style="background-image: url(img/map.JPG); padding: 40px 0; margin: 40px 0; ">
+                <div class="container">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-12" style="background: rgba(0,0,0,.8);">
+                                <h2 style="color: white">Select <strong>Location</strong></h2>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <h1 style="color: white">EUROPE</h1>
+                                        <a href="#">
+                                            <h3>France</h3>
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h1 style="color: white">America</h1>
+                                        <a href="#">
+                                            <h3>USA</h3>
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h1 style="color: white">ASIA</h1>
+                                        <a href="#" onclick="countrySelected('Singapore', 'SG')">
+                                            <h3>Singapore</h3>
+                                        </a>
+                                        <a href="#">
+                                            <h3>Indonesia</h3>
+                                        </a>
+                                        <a href="#">
+                                            <h3>Malaysia</h3>
+                                        </a>
+                                        <a href="#">
+                                            <h3>China</h3>
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h1 style="color: white">Global</h1>
+                                        <a href="#">
+                                            <h3>International</h3>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="tall" />
+                        <div class="row center">
+                            <div class="col-md-12">
+                                <h2 class="short word-rotator-title">
+                                    We're not the only ones
+                                    <strong>
+                                        <span class="word-rotate">
+                                            <span class="word-rotate-items">
+                                                <span>excited</span>
+                                                <span>happy</span>
+                                            </span>
+                                        </span>
+                                    </strong>
+                                    about Island Furniture...
+                                </h2>
+                                <h4 class="lead tall">5,500 customers in 100 countries use Island Furniture. Meet our
+                                    customers.</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- Theme Initializer -->
+        <script src="../js/theme.plugins.js"></script>
+        <script src="../js/theme.js"></script>
+
+        <!-- Current Page JS -->
+        <script src="../vendor/rs-plugin/js/jquery.themepunch.tools.min.js"></script>
+        <script src="../vendor/rs-plugin/js/jquery.themepunch.revolution.js"></script>
+        <script src="../vendor/circle-flip-slideshow/js/jquery.flipshow.js"></script>
+        <script src="../js/views/view.home.js"></script>
+    </div>
+</body>
+</html>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        var menuItem = document.getElementsByClassName("storeLocationMenu");
+        for(i = 0; i < menuItem.length; i++) {
+            menuItem[i].setAttribute('style', 'display:none;')
+        }
+    }, false);
+    function countrySelected(country, urlPrefix) {
+        fetch(new Request('/api/getCountryByName/' + country,
+        {
+            method: 'GET'
+        })).then(function (response) {
+            return response.json();
+        }).then(function (data) {
+            localStorage.setItem('selectedCountry', country);
+            localStorage.setItem('countryId', data.id);
+            localStorage.setItem('urlPrefix', urlPrefix);
+            fetch(new Request('/api/getStoresByCountry/' + country,
+            {
+                method: 'GET'
+            })).then(function (response) {
+                return response.json();
+            }).then(function (data) {
+                localStorage.setItem('storesInCountry', JSON.stringify(data));
+                window.location.href = '/B/' + urlPrefix + '/index.html';
+            }).catch(function(error) {
+                console.log(error);
+            });
+        }).catch(function(error) {
+            console.log(error);
+        });
+    }
+</script>
