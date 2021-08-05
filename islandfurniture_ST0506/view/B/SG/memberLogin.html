@@ -42,7 +42,7 @@
                                 return response.json();
                             }).then(function (member) {
                                 //if account is authenticated
-                                if (member.accountActivationStatus == 1) {
+                                if (member.accountActivationStatus == 0) {
                                     sessionStorage.setItem("token", data.token);
                                     //Get Member
                                     fetch(new Request('/api/getMember?email=' + email,
